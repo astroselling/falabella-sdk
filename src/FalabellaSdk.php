@@ -6,26 +6,26 @@ use Astroselling\FalabellaSdk\Exceptions\FetchException;
 use Astroselling\FalabellaSdk\Exceptions\FetchOrderException;
 use Astroselling\FalabellaSdk\Exceptions\FetchProductException;
 use Astroselling\FalabellaSdk\Models\FalabellaFeed;
-use Linio\SellerCenter\SellerCenterSdk;
-use Linio\SellerCenter\Application\Configuration as LinioConfiguration;
-use Linio\SellerCenter\Contract\ProductStatus;
-use Linio\SellerCenter\Model\Product\Products as LinioProducts;
-use Linio\SellerCenter\Model\Product\Product as LinioProduct;
-use Linio\SellerCenter\Model\Category\Category as LinioCategory;
-use Linio\SellerCenter\Model\Brand\Brand as LinioBrand;
-use Linio\SellerCenter\Model\Product\Image;
-use Linio\SellerCenter\Model\Product\Images;
-use Linio\SellerCenter\Model\Product\ProductData as LinioProductData;
-use Linio\SellerCenter\Exception\ErrorResponseException;
-use Linio\SellerCenter\Contract\ProductFilters;
-use Linio\SellerCenter\Service\ProductManager;
-use Linio\SellerCenter\Service\WebhookManager;
-use GuzzleHttp\Exception\RequestException;
-use GuzzleHttp\Psr7\Message;
 use DateTime;
 use Exception;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Psr7\Message;
 use Illuminate\Support\Facades\Log;
+use Linio\SellerCenter\Application\Configuration as LinioConfiguration;
+use Linio\SellerCenter\Contract\ProductFilters;
+use Linio\SellerCenter\Contract\ProductStatus;
+use Linio\SellerCenter\Exception\ErrorResponseException;
+use Linio\SellerCenter\Model\Brand\Brand as LinioBrand;
+use Linio\SellerCenter\Model\Category\Category as LinioCategory;
+use Linio\SellerCenter\Model\Product\Image;
+use Linio\SellerCenter\Model\Product\Images;
+use Linio\SellerCenter\Model\Product\Product as LinioProduct;
+use Linio\SellerCenter\Model\Product\ProductData as LinioProductData;
+use Linio\SellerCenter\Model\Product\Products as LinioProducts;
+use Linio\SellerCenter\SellerCenterSdk;
+use Linio\SellerCenter\Service\ProductManager;
+use Linio\SellerCenter\Service\WebhookManager;
 
 class FalabellaSdk
 {
@@ -74,17 +74,19 @@ class FalabellaSdk
 
     public function getProducts(int $limit, int $offset, string $filter = null): array
     {
-        if (!$filter) {
+        if (! $filter) {
             $filter = ProductManager::DEFAULT_FILTER;
         }
-        if (!in_array($filter, ProductFilters::FILTERS)) {
+        if (! in_array($filter, ProductFilters::FILTERS)) {
             throw new FetchProductException(
                 new Exception('Unknown product filter: '. $filter, 500),
                 ['Called From' => 'Linio get Products']
             );
         }
+
         try {
             $this->logLinioCall("getAllProducts (filter: $filter)");
+
             return $this->sdk->products()->getProductsFromParameters(
                 null, //CreatedAfter
                 null, //createdBefore
@@ -132,6 +134,7 @@ class FalabellaSdk
         } catch (ErrorResponseException $e) {
             throw $this->exceptionFromErrorResponse($e);
         }
+
         return $linioFeed;
     }
 
@@ -142,8 +145,10 @@ class FalabellaSdk
         $after = new DateTime('-1 month');
         $sortBy = 'created_at';
         $sortDir = 'DESC';
+
         try {
             $this->logLinioCall('getOrdersCreatedAfter');
+
             return $this->sdk->orders()->getOrdersCreatedAfter($after, $limit, $offset, $sortBy, $sortDir);
         } catch (RequestException $e) {
             throw new FetchOrderException($e, [
@@ -166,6 +171,7 @@ class FalabellaSdk
                 return [];
             }
             $this->logLinioCall('getMultipleOrderItems');
+
             return $this->sdk->orders()->getMultipleOrderItems($orderIdList);
         } catch (RequestException $e) {
             throw new FetchOrderException($e, [
@@ -180,13 +186,14 @@ class FalabellaSdk
         }
     }
 
-    public function getProductsBySku(array $skus) : array
+    public function getProductsBySku(array $skus): array
     {
         try {
             if (count($skus) == 0) {
                 return [];
             }
             $this->logLinioCall('getProductsBySellerSku');
+
             return $this->sdk->products()->getProductsBySellerSku($skus);
         } catch (RequestException $e) {
             throw new FetchProductException($e, [
@@ -204,30 +211,35 @@ class FalabellaSdk
     public function getCategories(): array
     {
         $this->logLinioCall('getCategoryTree');
+
         return $this->sdk->categories()->getCategoryTree();
     }
 
     public function getCategoryAttributes(int $categoryId): array
     {
         $this->logLinioCall('getCategoryAttributes');
+
         return $this->sdk->categories()->getCategoryAttributes($categoryId);
     }
 
     public function getBrands(): array
     {
         $this->logLinioCall('getBrands');
+
         return $this->sdk->brands()->getBrands();
     }
 
     public function getFeeds(?int $offset = 0, ?int $limit = 10): array
     {
         $this->logLinioCall('getFeedOffsetList');
+
         return $this->sdk->feeds()->getFeedOffsetList($offset, $limit);
     }
 
     public function getQc(array $skus): array
     {
         $this->logLinioCall('getQcStatusBySkuSellerList');
+
         return $this->sdk->qualityControl()->getQcStatusBySkuSellerList($skus);
     }
 
@@ -237,6 +249,7 @@ class FalabellaSdk
             $this->logLinioCall('getQc');
             $feed = $this->sdk->feeds()->getFeedStatusById($feedId);
             $linioFeed = FalabellaFeed::saveFromLinio($feed);
+
             return $linioFeed;
         } catch (RequestException $e) {
             throw new FetchException($e, [
@@ -287,6 +300,7 @@ class FalabellaSdk
             $linioProd->setStatus(ProductStatus::ACTIVE);
             $linioProducts->add($linioProd);
         }
+
         try {
             $this->logLinioCall('productCreate');
             $feedResponse = $this->sdk->products()->productCreate($linioProducts);
@@ -303,7 +317,7 @@ class FalabellaSdk
                 'Response Code' => $e->getResponse()->getStatusCode()
                     . " (" . $e->getResponse()->getReasonPhrase() . ")",
                 'Request' => Message::toString($e->getRequest()),
-                'Products' => $products
+                'Products' => $products,
             ]);
         } catch (ErrorResponseException $e) {
             throw $this->exceptionFromErrorResponse($e);
@@ -345,11 +359,12 @@ class FalabellaSdk
                 'Response Code' => $e->getResponse()->getStatusCode()
                     . " (" . $e->getResponse()->getReasonPhrase() . ")",
                 'Request' => Message::toString($e->getRequest()),
-                'UpdateData' => $updateData
+                'UpdateData' => $updateData,
             ]);
         } catch (ErrorResponseException $e) {
             throw $this->exceptionFromErrorResponse($e);
         }
+
         return $linioFeed;
     }
 
@@ -362,6 +377,7 @@ class FalabellaSdk
                 $imgSend[$sku][] = new Image($url);
             }
         }
+
         try {
             $this->logLinioCall('addImage');
             $feedResponse = $this->sdk->products()->addImage($imgSend);
@@ -375,17 +391,18 @@ class FalabellaSdk
                 'Response Code' => $e->getResponse()->getStatusCode()
                     . " (" . $e->getResponse()->getReasonPhrase() . ")",
                 'Request' => Message::toString($e->getRequest()),
-                'UpdateData' => $images
+                'UpdateData' => $images,
             ]);
         } catch (ErrorResponseException $e) {
             throw $this->exceptionFromErrorResponse($e);
         }
+
         return $linioFeed;
     }
 
     private function logLinioCall(string $method): void
     {
-        if (!$this->customLogCalls) {
+        if (! $this->customLogCalls) {
             return;
         }
         Log::channel('plain')->debug(sprintf(
@@ -404,7 +421,7 @@ class FalabellaSdk
     {
         return $this->sdk->webhooks();
     }
-    
+
     /**
      * Devuelve una orden.
      *
@@ -416,6 +433,7 @@ class FalabellaSdk
     {
         try {
             $this->logLinioCall('getOrder');
+
             return $this->sdk->orders()->getOrder($orderId);
         } catch (RequestException $e) {
             throw new FetchOrderException($e, [

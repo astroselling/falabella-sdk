@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Linio\SellerCenter\Model\Feed\Feed;
 
-
 /**
  * Falabella Feed model
  *
@@ -43,12 +42,12 @@ class FalabellaFeed extends Model
         'updated_date' => 'datetime',
     ];
 
-    public function isCompleted() : bool
+    public function isCompleted(): bool
     {
         return in_array($this->status, [self::STATUS_CANCELED, self::STATUS_FINISHED, self::STATUS_ERROR]);
     }
 
-    public static function saveFromLinio(Feed $feed) : self
+    public static function saveFromLinio(Feed $feed): self
     {
         $newFeed = self::where('feed_id', $feed->getId())->firstOrNew();
         $newFeed->feed_id = $feed->getId();
@@ -64,6 +63,7 @@ class FalabellaFeed extends Model
         $newFeed->warnings = $feed->getWarnings();
         $newFeed->failure_reports = $feed->getFailureReports();
         $newFeed->save();
+
         return $newFeed;
     }
 }

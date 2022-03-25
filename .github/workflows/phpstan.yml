@@ -10,6 +10,8 @@ jobs:
   phpstan:
     name: phpstan
     runs-on: ubuntu-latest
+    env:
+      COMPOSER_AUTH: '{"github-oauth": {"github.com": "${{secrets.COMPOSER_AUTH}}"} }'
     steps:
       - uses: actions/checkout@v2
 

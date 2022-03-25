@@ -18,7 +18,7 @@
         },
         "astroselling/asexceptions": {
             "type": "git",
-            "url": "https://github.com/astroselling/asexceptions.git"
+            "url": "git@github.com:astroselling/asexceptions.git"
         }
     },
     "require": {

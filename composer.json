@@ -13,11 +13,11 @@
     ],
     "repositories": {
         "linio/seller-center-sdk": {
-            "type": "git",
+            "type": "vcs",
             "url": "https://github.com/astroselling/seller-center-sdk.git"
         },
         "astroselling/asexceptions": {
-            "type": "git",
+            "type": "vcs",
             "url": "git@github.com:astroselling/asexceptions.git"
         }
     },

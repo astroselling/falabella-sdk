@@ -16,7 +16,7 @@ class FalabellaFeedFactory extends Factory
         $failedRecords = $processedRecords - $this->faker->numberBetween(0, $processedRecords);
 
         return [
-            'feed_id' => $this->faker->uuid(64),
+            'feed_id' => $this->faker->uuid(),
             'status' => $this->faker->randomElement([
                 FalabellaFeed::STATUS_QUEUED,
                 FalabellaFeed::STATUS_PROCESSING,
@@ -35,7 +35,7 @@ class FalabellaFeedFactory extends Factory
             'processed_records' => $processedRecords,
             'failed_records' => $failedRecords,
             'errors' => json_encode(
-                $this->faker->randomElement(
+                $this->faker->randomElement([
                     [],
                     [],
                     [
@@ -43,10 +43,10 @@ class FalabellaFeedFactory extends Factory
                             'Message' => 'There was an error'
                         ]
                     ],
-                )
+                ])
             ),
             'warnings' => json_encode(
-                $this->faker->randomElement(
+                $this->faker->randomElement([
                     [],
                     [],
                     [
@@ -54,10 +54,10 @@ class FalabellaFeedFactory extends Factory
                             'Message' => 'There was an error'
                         ]
                     ],
-                )
+                ])
             ),
             'failure_reports' => json_encode(
-                $this->faker->randomElement(
+                $this->faker->randomElement([
                     [],
                     [],
                     [
@@ -65,7 +65,7 @@ class FalabellaFeedFactory extends Factory
                             'Message' => 'There was an error'
                         ]
                     ],
-                )
+                ])
             ),
         ];
     }

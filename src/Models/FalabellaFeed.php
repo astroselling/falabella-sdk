@@ -7,6 +7,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Linio\SellerCenter\Model\Feed\Feed;
 
+
+/**
+ * Falabella Feed model
+ *
+ * @property string $feed_id
+ * @property string $status
+ * @property string $source
+ * @property string $action
+ * @property \DateTimeImmutable $creation_date
+ * @property \DateTimeImmutable $updated_date
+ * @property int $total_records
+ * @property int $processed_records
+ * @property int $failed_records
+ * @property array|\JsonSerializable $errors
+ * @property array|\JsonSerializable $warnings
+ * @property array|\JsonSerializable $failure_reports
+ */
 class FalabellaFeed extends Model
 {
     use SoftDeletes;

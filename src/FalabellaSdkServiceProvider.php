@@ -2,39 +2,16 @@
 
 namespace Astroselling\FalabellaSdk;
 
-use Astroselling\FalabellaSdk\Facades\FalabellaSdk;
-use Illuminate\Support\ServiceProvider;
+use Spatie\LaravelPackageTools\Package;
+use Spatie\LaravelPackageTools\PackageServiceProvider;
 
-class FalabellaSdkServiceProvider extends ServiceProvider
+class FalabellaSdkServiceProvider extends PackageServiceProvider
 {
-    /**
-     * Perform post-registration booting of services.
-     *
-     * @return void
-     */
-    public function boot(): void
+    public function configurePackage(Package $package): void
     {
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
-
-        // Publishing is only necessary when using the CLI.
-        if ($this->app->runningInConsole()) {
-            $this->bootForConsole();
-        }
-    }
-
-    /**
-     * Register any package services.
-     *
-     * @return void
-     */
-    public function register(): void
-    {
-        $this->mergeConfigFrom(__DIR__.'/../config/falabellasdk.php', 'falabellasdk');
-
-        // Register the service the package provides.
-        $this->app->singleton('falabellasdk', function ($app) {
-            return new FalabellaSdk;
-        });
+        $package->name('falabella-sdk')
+            ->hasConfigFile('falabellasdk')
+            ->hasMigration('create_falabella_feeds_table');
     }
 
     /**
@@ -45,18 +22,5 @@ class FalabellaSdkServiceProvider extends ServiceProvider
     public function provides()
     {
         return ['falabellasdk'];
-    }
-
-    /**
-     * Console-specific booting.
-     *
-     * @return void
-     */
-    protected function bootForConsole(): void
-    {
-        // Publishing the configuration file.
-        $this->publishes([
-            __DIR__.'/../config/falabellasdk.php' => config_path('falabellasdk.php'),
-        ], 'falabellasdk.config');
     }
 }

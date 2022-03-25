@@ -5,7 +5,7 @@ namespace Astroselling\FalabellaSdk;
 use Astroselling\FalabellaSdk\Exceptions\FetchException;
 use Astroselling\FalabellaSdk\Exceptions\FetchOrderException;
 use Astroselling\FalabellaSdk\Exceptions\FetchProductException;
-use Astroselling\FalabellaSdk\Models\LinioFeed;
+use Astroselling\FalabellaSdk\Models\FalabellaFeed;
 use Linio\SellerCenter\SellerCenterSdk;
 use Linio\SellerCenter\Application\Configuration as LinioConfiguration;
 use Linio\SellerCenter\Contract\ProductStatus;
@@ -109,7 +109,7 @@ class FalabellaSdk
         }
     }
 
-    public function deleteProducts(array $deleteIds): LinioFeed
+    public function deleteProducts(array $deleteIds): FalabellaFeed
     {
         try {
             $linioProducts = new LinioProducts();
@@ -120,7 +120,7 @@ class FalabellaSdk
             $this->logLinioCall('deleteProducts');
             $feedResponse = $this->sdk->products()->productRemove($linioProducts);
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
-            $linioFeed = LinioFeed::saveFromLinio($feed);
+            $linioFeed = FalabellaFeed::saveFromLinio($feed);
         } catch (RequestException $e) {
             throw new FetchException($e, [
                 'Called From' => 'Delete Products',
@@ -231,12 +231,12 @@ class FalabellaSdk
         return $this->sdk->qualityControl()->getQcStatusBySkuSellerList($skus);
     }
 
-    public function updateFeed(string $feedId): LinioFeed
+    public function updateFeed(string $feedId): FalabellaFeed
     {
         try {
             $this->logLinioCall('getQc');
             $feed = $this->sdk->feeds()->getFeedStatusById($feedId);
-            $linioFeed = LinioFeed::saveFromLinio($feed);
+            $linioFeed = FalabellaFeed::saveFromLinio($feed);
             return $linioFeed;
         } catch (RequestException $e) {
             throw new FetchException($e, [
@@ -251,7 +251,7 @@ class FalabellaSdk
         }
     }
 
-    public function publishProducts(array $products): LinioFeed
+    public function publishProducts(array $products): FalabellaFeed
     {
         $linioProducts = new LinioProducts();
         foreach ($products as $product) {
@@ -292,9 +292,9 @@ class FalabellaSdk
             $feedResponse = $this->sdk->products()->productCreate($linioProducts);
             $this->logLinioCall('getFeedStatusById');
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
-            $linioFeed = LinioFeed::saveFromLinio($feed);
+            $linioFeed = FalabellaFeed::saveFromLinio($feed);
             // TEMPORAL, PARA DESARROLLAR SIN ENVIAR LOS PRODUCTOS A LINIO
-            // $linioFeed = LinioFeed::orderBy('id', 'desc')->first();
+            // $linioFeed = FalabellaFeed::orderBy('id', 'desc')->first();
             return $linioFeed;
         } catch (RequestException $e) {
             throw new FetchException($e, [
@@ -310,7 +310,7 @@ class FalabellaSdk
         }
     }
 
-    public function updateProducts(array $updateData): LinioFeed
+    public function updateProducts(array $updateData): FalabellaFeed
     {
         try {
             $linioProducts = new LinioProducts();
@@ -337,7 +337,7 @@ class FalabellaSdk
             $this->logLinioCall('productUpdate');
             $feedResponse = $this->sdk->products()->productUpdate($linioProducts);
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
-            $linioFeed = LinioFeed::saveFromLinio($feed);
+            $linioFeed = FalabellaFeed::saveFromLinio($feed);
         } catch (RequestException $e) {
             throw new FetchException($e, [
                 'Called From' => 'Update Product',
@@ -353,7 +353,7 @@ class FalabellaSdk
         return $linioFeed;
     }
 
-    public function publishProductImages(array $images): LinioFeed
+    public function publishProductImages(array $images): FalabellaFeed
     {
         $imgSend = [];
         foreach ($images as $sku => $urls) {
@@ -367,7 +367,7 @@ class FalabellaSdk
             $feedResponse = $this->sdk->products()->addImage($imgSend);
             $this->logLinioCall('getFeedStatusById');
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
-            $linioFeed = LinioFeed::saveFromLinio($feed);
+            $linioFeed = FalabellaFeed::saveFromLinio($feed);
         } catch (RequestException $e) {
             throw new FetchException($e, [
                 'Called From' => 'Add Images',
@@ -409,7 +409,7 @@ class FalabellaSdk
      * Devuelve una orden.
      *
      * @param int $orderId
-     * @return array
+     * @return object
      * @throws FetchOrderException
      */
     public function getOrder(int $orderId): object

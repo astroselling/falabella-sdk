@@ -28,7 +28,7 @@ class TestCase extends Orchestra
     {
         config()->set('database.default', 'testing');
 
-        include_once __DIR__.'/../database/migrations/2022_22_03_000000create_falabella_feeds_table.php';
-        (new \CreateFalabellaFeedsTable())->up();
+        $migration = include __DIR__.'/../database/migrations/create_falabella_feeds_table.php.stub';
+        $migration->up();
     }
 }

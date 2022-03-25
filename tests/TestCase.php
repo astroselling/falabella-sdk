@@ -1,10 +1,10 @@
 <?php
 
-namespace VendorName\Skeleton\Tests;
+namespace Astroselling\FalabellaSdk\Tests;
 
+use Astroselling\FalabellaSdk\FalabellaSdkServiceProvider;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Orchestra\Testbench\TestCase as Orchestra;
-use VendorName\Skeleton\SkeletonServiceProvider;
 
 class TestCase extends Orchestra
 {
@@ -13,14 +13,14 @@ class TestCase extends Orchestra
         parent::setUp();
 
         Factory::guessFactoryNamesUsing(
-            fn (string $modelName) => 'VendorName\\Skeleton\\Database\\Factories\\'.class_basename($modelName).'Factory'
+            fn (string $modelName) => 'Astroselling\\FalabellaSdk\\Database\\Factories\\'.class_basename($modelName).'Factory'
         );
     }
 
     protected function getPackageProviders($app)
     {
         return [
-            SkeletonServiceProvider::class,
+            FalabellaSdkServiceProvider::class,
         ];
     }
 
@@ -28,9 +28,7 @@ class TestCase extends Orchestra
     {
         config()->set('database.default', 'testing');
 
-        /*
-        $migration = include __DIR__.'/../database/migrations/create_skeleton_table.php.stub';
-        $migration->up();
-        */
+        include_once __DIR__.'/../database/migrations/2022_22_03_000000create_falabella_feeds_table.php';
+        (new \CreateFalabellaFeedsTable())->up();
     }
 }

@@ -31,7 +31,7 @@ class FalabellaSdk
     protected $sdk;
     protected bool $customLogCalls;
     protected string $userName;
-    const URL = 'https://sellercenter-api.falabella.com';
+    public const URL = 'https://sellercenter-api.falabella.com';
 
     public function __construct(string $userName, string $apiKey)
     {

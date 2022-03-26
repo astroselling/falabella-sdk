@@ -3,7 +3,6 @@
 namespace Astroselling\FalabellaSdk;
 
 use Astroselling\FalabellaSdk\Exceptions\FetchException;
-use Astroselling\FalabellaSdk\Exceptions\FetchOrderException;
 use Astroselling\FalabellaSdk\Exceptions\FetchProductException;
 use Astroselling\FalabellaSdk\Models\FalabellaFeed;
 use DateTime;
@@ -32,42 +31,28 @@ class FalabellaSdk
     protected $sdk;
     protected bool $customLogCalls;
     protected string $userName;
-    protected const URLS = [
-        "ARG" => "https://sellercenter-api.linio.com.ar/",
-        "CHL" => "https://sellercenter-api.linio.cl/",
-        "COL" => "https://sellercenter-api.linio.com.co/",
-        "MEX" => "https://sellercenter-api.linio.com.mx/",
-        "PER" => "https://sellercenter-api.linio.com.pe/",
-        "TST" => "https://sellercenter-api-staging.linio.com.co/",
-        "TSP" => "https://sellercenter-api-staging.linio.com.pe/",
-    ];
+    const URL = 'https://sellercenter-api.falabella.com';
 
-    public function getSdkUsername(): string
+    public function __construct(string $userName, string $apiKey)
     {
-        return $this->userName;
-    }
-
-    public function __construct(string $userName, string $apiKey, string $countryISO)
-    {
-        $logger = null;
         $client = new Client();
-        $configuration = new LinioConfiguration($apiKey, $userName, self::URLS[$countryISO], '1.0');
-        $this->sdk = new SellerCenterSdk($configuration, $client, $logger);
+        $configuration = new LinioConfiguration($apiKey, $userName, self::URL, '1.0');
+        $this->sdk = new SellerCenterSdk($configuration, $client);
 
         $this->userName = $userName; // Used only for logging
-        $this->customLogCalls = config('liniosdk.custom_log_calls');
+        $this->customLogCalls = config('falabellasdk.custom_log_calls');
     }
 
     private function exceptionFromErrorResponse(ErrorResponseException $e)
     {
-        return new FetchOrderException(
+        return new FetchException(
             new Exception('Error response exception', $e->getCode()),
             [
                 'Called From' => 'Linio get Order Items',
                 'Type' => $e->getType(),
                 'Action' => $e->getAction(),
                 'Message' => $e->getMessage(),
-                'Linio Username' => $this->getSdkUsername(),
+                'Linio Username' => $this->userName,
             ]
         );
     }
@@ -151,13 +136,13 @@ class FalabellaSdk
 
             return $this->sdk->orders()->getOrdersCreatedAfter($after, $limit, $offset, $sortBy, $sortDir);
         } catch (RequestException $e) {
-            throw new FetchOrderException($e, [
+            throw new FetchException($e, [
                 'Called From' => 'Linio get Orders',
                 'Response' => Message::toString($e->getResponse()),
                 'Response Code' => $e->getResponse()->getStatusCode()
                     . " (" . $e->getResponse()->getReasonPhrase() . ")",
                 'Request' => Message::toString($e->getRequest()),
-                'Linio Username' => $this->getSdkUsername(),
+                'Linio Username' => $this->userName,
             ]);
         } catch (ErrorResponseException $e) {
             throw $this->exceptionFromErrorResponse($e);
@@ -174,7 +159,7 @@ class FalabellaSdk
 
             return $this->sdk->orders()->getMultipleOrderItems($orderIdList);
         } catch (RequestException $e) {
-            throw new FetchOrderException($e, [
+            throw new FetchException($e, [
                 'Called From' => 'Linio get Order Items',
                 'Response' => Message::toString($e->getResponse()),
                 'Response Code' => $e->getResponse()->getStatusCode()
@@ -427,7 +412,7 @@ class FalabellaSdk
      *
      * @param int $orderId
      * @return object
-     * @throws FetchOrderException
+     * @throws FetchException
      */
     public function getOrder(int $orderId): object
     {
@@ -436,22 +421,22 @@ class FalabellaSdk
 
             return $this->sdk->orders()->getOrder($orderId);
         } catch (RequestException $e) {
-            throw new FetchOrderException($e, [
+            throw new FetchException($e, [
                 'Called From' => 'Linio get Order',
                 'Response' => Message::toString($e->getResponse()),
                 'Response Code' => $e->getResponse()->getStatusCode()
                     . " (" . $e->getResponse()->getReasonPhrase() . ")",
                 'Request' => Message::toString($e->getRequest()),
-                'Linio Username' => $this->getSdkUsername(),
+                'Linio Username' => $this->userName,
             ]);
         } catch (ErrorResponseException $e) {
-            throw new FetchOrderException(
+            throw new FetchException(
                 new Exception('Error response exception', $e->getCode()),
                 [
                     'Called From' => 'Linio get Order',
                     'Type' => $e->getType(),
                     'Action' => $e->getAction(),
-                    'Linio Username' => $this->getSdkUsername(),
+                    'Linio Username' => $this->userName,
                 ]
             );
         }

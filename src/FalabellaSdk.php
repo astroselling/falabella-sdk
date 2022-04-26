@@ -10,18 +10,21 @@ use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 use GuzzleHttp\Psr7\Message;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Log;
-use Linio\SellerCenter\Application\Configuration as LinioConfiguration;
+use Linio\SellerCenter\Application\Configuration;
 use Linio\SellerCenter\Contract\ProductFilters;
 use Linio\SellerCenter\Contract\ProductStatus;
 use Linio\SellerCenter\Exception\ErrorResponseException;
-use Linio\SellerCenter\Model\Brand\Brand as LinioBrand;
-use Linio\SellerCenter\Model\Category\Category as LinioCategory;
+use Linio\SellerCenter\Model\Brand\Brand;
+use Linio\SellerCenter\Model\Category\Category;
+use Linio\SellerCenter\Model\Product\BusinessUnit;
+use Linio\SellerCenter\Model\Product\BusinessUnits;
 use Linio\SellerCenter\Model\Product\Image;
 use Linio\SellerCenter\Model\Product\Images;
-use Linio\SellerCenter\Model\Product\Product as LinioProduct;
-use Linio\SellerCenter\Model\Product\ProductData as LinioProductData;
-use Linio\SellerCenter\Model\Product\Products as LinioProducts;
+use Linio\SellerCenter\Model\Product\GlobalProduct;
+use Linio\SellerCenter\Model\Product\ProductData;
+use Linio\SellerCenter\Model\Product\Products;
 use Linio\SellerCenter\SellerCenterSdk;
 use Linio\SellerCenter\Service\ProductManager;
 use Linio\SellerCenter\Service\WebhookManager;
@@ -36,7 +39,7 @@ class FalabellaSdk
     public function __construct(string $userName, string $apiKey)
     {
         $client = new Client();
-        $configuration = new LinioConfiguration($apiKey, $userName, self::URL, '1.0');
+        $configuration = new Configuration($apiKey, $userName, self::URL, '1.0');
         $this->sdk = new SellerCenterSdk($configuration, $client);
 
         $this->userName = $userName; // Used only for logging
@@ -48,11 +51,11 @@ class FalabellaSdk
         return new FetchException(
             new Exception('Error response exception', $e->getCode()),
             [
-                'Called From' => 'Linio get Order Items',
+                'Called From' => 'Falabella get Order Items',
                 'Type' => $e->getType(),
                 'Action' => $e->getAction(),
                 'Message' => $e->getMessage(),
-                'Linio Username' => $this->userName,
+                'Falabella Username' => $this->userName,
             ]
         );
     }
@@ -65,14 +68,14 @@ class FalabellaSdk
         if (! in_array($filter, ProductFilters::FILTERS)) {
             throw new FetchProductException(
                 new Exception('Unknown product filter: '. $filter, 500),
-                ['Called From' => 'Linio get Products']
+                ['Called From' => 'Falabella get Products']
             );
         }
 
         try {
-            $this->logLinioCall("getAllProducts (filter: $filter)");
+            $this->logCall("getAllProducts (filter: $filter)");
 
-            return $this->sdk->products()->getProductsFromParameters(
+            return $this->sdk->globalProducts()->getProductsFromParameters(
                 null, //CreatedAfter
                 null, //createdBefore
                 null, //search
@@ -85,7 +88,7 @@ class FalabellaSdk
             );
         } catch (RequestException $e) {
             throw new FetchProductException($e, [
-                'Called From' => 'Linio get Products',
+                'Called From' => 'Falabella get Products',
                 'Response' => Message::toString($e->getResponse()),
                 'Response Code' => $e->getResponse()->getStatusCode()
                     . " (" . $e->getResponse()->getReasonPhrase() . ")",
@@ -99,15 +102,16 @@ class FalabellaSdk
     public function deleteProducts(array $deleteIds): FalabellaFeed
     {
         try {
-            $linioProducts = new LinioProducts();
+            $products = new Products();
             foreach ($deleteIds as $idInMkp) {
-                $prod = LinioProduct::fromSku($idInMkp);
-                $linioProducts->add($prod);
+                $prod = GlobalProduct::fromSku($idInMkp);
+                $products->add($prod);
             }
-            $this->logLinioCall('deleteProducts');
-            $feedResponse = $this->sdk->products()->productRemove($linioProducts);
+            $this->logCall('deleteProducts');
+            $feedResponse = $this->sdk->globalProducts()->productRemove($products);
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
-            $linioFeed = FalabellaFeed::saveFromLinio($feed);
+
+            $tarvosFeed = FalabellaFeed::saveFromLinio($feed);
         } catch (RequestException $e) {
             throw new FetchException($e, [
                 'Called From' => 'Delete Products',
@@ -120,7 +124,7 @@ class FalabellaSdk
             throw $this->exceptionFromErrorResponse($e);
         }
 
-        return $linioFeed;
+        return $tarvosFeed;
     }
 
     public function getOrders(int $limit, int $offset): array
@@ -132,7 +136,7 @@ class FalabellaSdk
         $sortDir = 'DESC';
 
         try {
-            $this->logLinioCall('getOrdersCreatedAfter');
+            $this->logCall('getOrdersCreatedAfter');
 
             return $this->sdk->orders()->getOrdersCreatedAfter($after, $limit, $offset, $sortBy, $sortDir);
         } catch (RequestException $e) {
@@ -155,7 +159,7 @@ class FalabellaSdk
             if (count($orderIdList) == 0) {
                 return [];
             }
-            $this->logLinioCall('getMultipleOrderItems');
+            $this->logCall('getMultipleOrderItems');
 
             return $this->sdk->orders()->getMultipleOrderItems($orderIdList);
         } catch (RequestException $e) {
@@ -177,9 +181,9 @@ class FalabellaSdk
             if (count($skus) == 0) {
                 return [];
             }
-            $this->logLinioCall('getProductsBySellerSku');
+            $this->logCall('getProductsBySellerSku');
 
-            return $this->sdk->products()->getProductsBySellerSku($skus);
+            return $this->sdk->globalProducts()->getProductsBySellerSku($skus);
         } catch (RequestException $e) {
             throw new FetchProductException($e, [
                 'Called From' => 'Linio get Products By Sku',
@@ -195,35 +199,35 @@ class FalabellaSdk
 
     public function getCategories(): array
     {
-        $this->logLinioCall('getCategoryTree');
+        $this->logCall('getCategoryTree');
 
         return $this->sdk->categories()->getCategoryTree();
     }
 
     public function getCategoryAttributes(int $categoryId): array
     {
-        $this->logLinioCall('getCategoryAttributes');
+        $this->logCall('getCategoryAttributes');
 
         return $this->sdk->categories()->getCategoryAttributes($categoryId);
     }
 
     public function getBrands(): array
     {
-        $this->logLinioCall('getBrands');
+        $this->logCall('getBrands');
 
         return $this->sdk->brands()->getBrands();
     }
 
     public function getFeeds(?int $offset = 0, ?int $limit = 10): array
     {
-        $this->logLinioCall('getFeedOffsetList');
+        $this->logCall('getFeedOffsetList');
 
         return $this->sdk->feeds()->getFeedOffsetList($offset, $limit);
     }
 
     public function getQc(array $skus): array
     {
-        $this->logLinioCall('getQcStatusBySkuSellerList');
+        $this->logCall('getQcStatusBySkuSellerList');
 
         return $this->sdk->qualityControl()->getQcStatusBySkuSellerList($skus);
     }
@@ -231,11 +235,11 @@ class FalabellaSdk
     public function updateFeed(string $feedId): FalabellaFeed
     {
         try {
-            $this->logLinioCall('getQc');
+            $this->logCall('getQc');
             $feed = $this->sdk->feeds()->getFeedStatusById($feedId);
-            $linioFeed = FalabellaFeed::saveFromLinio($feed);
+            $localFeed = FalabellaFeed::saveFromLinio($feed);
 
-            return $linioFeed;
+            return $localFeed;
         } catch (RequestException $e) {
             throw new FetchException($e, [
                 'Called From' => 'Update Feed',
@@ -251,12 +255,12 @@ class FalabellaSdk
 
     public function publishProducts(array $products): FalabellaFeed
     {
-        $linioProducts = new LinioProducts();
+        $linioProducts = new Products();
         foreach ($products as $product) {
-            $primaryCategory = LinioCategory::fromId($product['PrimaryCategory']);
-            $brand = LinioBrand::fromName($product['Brand']);
+            $primaryCategory = Category::fromId($product['PrimaryCategory']);
+            $brand = Brand::fromName($product['Brand']);
             $images = new Images();
-            $productData = new LinioProductData(
+            $productData = new ProductData(
                 $product['ConditionType'] ?? null,
                 $product['PackageHeight'] ?? null,
                 $product['PackageWidth'] ?? null,
@@ -266,35 +270,43 @@ class FalabellaSdk
             if (isset($product['ShortDescription'])) {
                 $productData->add('ShortDescription', $product['ShortDescription']);
             }
-            $linioProd = LinioProduct::fromBasicData(
+
+            $businessUnits = new BusinessUnits();
+            
+            $businessUnits->add(
+                new BusinessUnit(
+                    'facl',
+                    $product['Price'],
+                    $product['Quantity'],
+                    ProductStatus::ACTIVE
+                )
+            );
+
+            $linioProd = GlobalProduct::fromBasicData(
                 $product['SellerSku'], // string
                 $product['Name'], // string
                 $product['Variation'], // string
                 $primaryCategory, // Category
                 $product['Description'], // string
                 $brand, // Brand
-                $product['Price'], // float
+                $businessUnits,
                 $product['ProductId'], // string
                 $product['TaxClass'], // nulo|string
                 $productData, // ProductData
-                $images //Images will be ignored when creating, and used when updating
+                $images, //Images will be ignored when creating, and used when updating
+                ProductStatus::ACTIVE
             );
             $linioProd->setParentSku($product['ParentSku']);
-            $linioProd->setQuantity($product['Quantity']);
-            $linioProd->setAvailable($product['Quantity']);
-            $linioProd->setStatus(ProductStatus::ACTIVE);
             $linioProducts->add($linioProd);
         }
 
         try {
-            $this->logLinioCall('productCreate');
-            $feedResponse = $this->sdk->products()->productCreate($linioProducts);
-            $this->logLinioCall('getFeedStatusById');
+            $this->logCall('productCreate');
+            $feedResponse = $this->sdk->globalProducts()->productCreate($linioProducts);
+            $this->logCall('getFeedStatusById');
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
-            $linioFeed = FalabellaFeed::saveFromLinio($feed);
-            // TEMPORAL, PARA DESARROLLAR SIN ENVIAR LOS PRODUCTOS A LINIO
-            // $linioFeed = FalabellaFeed::orderBy('id', 'desc')->first();
-            return $linioFeed;
+            $localFeed = FalabellaFeed::saveFromLinio($feed);
+            return $localFeed;
         } catch (RequestException $e) {
             throw new FetchException($e, [
                 'Called From' => 'Create Product',
@@ -312,31 +324,39 @@ class FalabellaSdk
     public function updateProducts(array $updateData): FalabellaFeed
     {
         try {
-            $linioProducts = new LinioProducts();
+            $products = new Products();
             foreach ($updateData as $sku => $prodData) {
-                $prod = LinioProduct::fromSku($sku);
-                if ($prodData['stock'] !== null) {
-                    $prod->setQuantity($prodData['stock']);
-                }
-                if ($prodData['price'] !== null) {
-                    $prod->setPrice($prodData['price']);
-                }
-                if (isset($prodData['sale_price']) && $prodData['sale_price']) {
-                    $prod->setSalePrice($prodData['sale_price']);
-                }
-                if (isset($prodData['sale_start']) && $prodData['sale_start']) {
-                    $prod->setSaleStartDate($prodData['sale_start']);
-                }
-                if (isset($prodData['sale_end']) && $prodData['sale_end']) {
-                    $prod->setSaleEndDate($prodData['sale_end']);
-                }
+                $product = GlobalProduct::fromSku($sku);
+                $businessUnits = new BusinessUnits();
+            
+                $hasSaleStart = isset($prodData['sale_start']) && $prodData['sale_start'];
+                $hasSaleEnd = isset($prodData['sale_end']) && $prodData['sale_end'];
 
-                $linioProducts->add($prod);
+                $businessUnits->add(
+                    new BusinessUnit(
+                        'facl',
+                        $prodData['price'],
+                        $prodData['stock'],
+                        ProductStatus::ACTIVE,
+                        null,
+                        null,
+                        $prodData['sale_price'] ?? null,
+                        $hasSaleStart ? Carbon::parse($prodData['sale_start']) : null,
+                        $hasSaleEnd ? Carbon::parse($prodData['sale_end']) : null,
+                    )
+                );
+
+                $product->setBusinessUnits($businessUnits);
+
+                $products->add($product);
             }
-            $this->logLinioCall('productUpdate');
-            $feedResponse = $this->sdk->products()->productUpdate($linioProducts);
+
+            $this->logCall('productUpdate');
+            
+            $feedResponse = $this->sdk->globalProducts()->productUpdate($products);
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
-            $linioFeed = FalabellaFeed::saveFromLinio($feed);
+            
+            $localFeed = FalabellaFeed::saveFromLinio($feed);
         } catch (RequestException $e) {
             throw new FetchException($e, [
                 'Called From' => 'Update Product',
@@ -350,7 +370,7 @@ class FalabellaSdk
             throw $this->exceptionFromErrorResponse($e);
         }
 
-        return $linioFeed;
+        return $localFeed;
     }
 
     public function publishProductImages(array $images): FalabellaFeed
@@ -364,11 +384,11 @@ class FalabellaSdk
         }
 
         try {
-            $this->logLinioCall('addImage');
-            $feedResponse = $this->sdk->products()->addImage($imgSend);
-            $this->logLinioCall('getFeedStatusById');
+            $this->logCall('addImage');
+            $feedResponse = $this->sdk->globalProducts()->addImage($imgSend);
+            $this->logCall('getFeedStatusById');
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
-            $linioFeed = FalabellaFeed::saveFromLinio($feed);
+            $localFeed = FalabellaFeed::saveFromLinio($feed);
         } catch (RequestException $e) {
             throw new FetchException($e, [
                 'Called From' => 'Add Images',
@@ -382,10 +402,10 @@ class FalabellaSdk
             throw $this->exceptionFromErrorResponse($e);
         }
 
-        return $linioFeed;
+        return $localFeed;
     }
 
-    private function logLinioCall(string $method): void
+    private function logCall(string $method): void
     {
         if (! $this->customLogCalls) {
             return;
@@ -417,7 +437,7 @@ class FalabellaSdk
     public function getOrder(int $orderId): object
     {
         try {
-            $this->logLinioCall('getOrder');
+            $this->logCall('getOrder');
 
             return $this->sdk->orders()->getOrder($orderId);
         } catch (RequestException $e) {

@@ -20,9 +20,9 @@ use Linio\SellerCenter\Model\Brand\Brand;
 use Linio\SellerCenter\Model\Category\Category;
 use Linio\SellerCenter\Model\Product\BusinessUnit;
 use Linio\SellerCenter\Model\Product\BusinessUnits;
+use Linio\SellerCenter\Model\Product\GlobalProduct;
 use Linio\SellerCenter\Model\Product\Image;
 use Linio\SellerCenter\Model\Product\Images;
-use Linio\SellerCenter\Model\Product\GlobalProduct;
 use Linio\SellerCenter\Model\Product\ProductData;
 use Linio\SellerCenter\Model\Product\Products;
 use Linio\SellerCenter\SellerCenterSdk;
@@ -272,7 +272,7 @@ class FalabellaSdk
             }
 
             $businessUnits = new BusinessUnits();
-            
+
             $businessUnits->add(
                 new BusinessUnit(
                     'facl',
@@ -306,6 +306,7 @@ class FalabellaSdk
             $this->logCall('getFeedStatusById');
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
             $localFeed = FalabellaFeed::saveFromLinio($feed);
+
             return $localFeed;
         } catch (RequestException $e) {
             throw new FetchException($e, [
@@ -328,7 +329,7 @@ class FalabellaSdk
             foreach ($updateData as $sku => $prodData) {
                 $product = GlobalProduct::fromSku($sku);
                 $businessUnits = new BusinessUnits();
-            
+
                 $hasSaleStart = isset($prodData['sale_start']) && $prodData['sale_start'];
                 $hasSaleEnd = isset($prodData['sale_end']) && $prodData['sale_end'];
 
@@ -352,10 +353,10 @@ class FalabellaSdk
             }
 
             $this->logCall('productUpdate');
-            
+
             $feedResponse = $this->sdk->globalProducts()->productUpdate($products);
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
-            
+
             $localFeed = FalabellaFeed::saveFromLinio($feed);
         } catch (RequestException $e) {
             throw new FetchException($e, [

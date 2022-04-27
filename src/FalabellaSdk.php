@@ -31,19 +31,31 @@ use Linio\SellerCenter\Service\WebhookManager;
 
 class FalabellaSdk
 {
-    protected $sdk;
+    protected SellerCenterSdk $sdk;
     protected bool $customLogCalls;
     protected string $userName;
+    protected string $operatorCode;
     public const URL = 'https://sellercenter-api.falabella.com';
+    public const STAGING_URL = 'https://sellercenter-api-staging.falabella.com';
 
-    public function __construct(string $userName, string $apiKey)
+    public function __construct(string $userName, string $apiKey, string $countryISO)
     {
         $client = new Client();
-        $configuration = new Configuration($apiKey, $userName, self::URL, '1.0');
+        $configuration = new Configuration($apiKey, $userName, $countryISO == 'TST' ? self::STAGING_URL : self::URL, '1.0');
         $this->sdk = new SellerCenterSdk($configuration, $client);
-
         $this->userName = $userName; // Used only for logging
         $this->customLogCalls = config('falabellasdk.custom_log_calls');
+
+        $this->operatorCode = [
+            'ARG' => 'faar',
+            'BRA' => 'fabr',
+            'CHL' => 'facl',
+            'COL' => 'faco',
+            'MEX' => 'famx',
+            'PER' => 'fape',
+            'TST' => 'facl',
+            'URY' => 'fauy',
+        ][$countryISO];
     }
 
     private function exceptionFromErrorResponse(ErrorResponseException $e)
@@ -111,7 +123,7 @@ class FalabellaSdk
             $feedResponse = $this->sdk->globalProducts()->productRemove($products);
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
 
-            $tarvosFeed = FalabellaFeed::saveFromLinio($feed);
+            $tarvosFeed = FalabellaFeed::saveFromSellerCenter($feed);
         } catch (RequestException $e) {
             throw new FetchException($e, [
                 'Called From' => 'Delete Products',
@@ -141,12 +153,12 @@ class FalabellaSdk
             return $this->sdk->orders()->getOrdersCreatedAfter($after, $limit, $offset, $sortBy, $sortDir);
         } catch (RequestException $e) {
             throw new FetchException($e, [
-                'Called From' => 'Linio get Orders',
+                'Called From' => 'Falabella get Orders',
                 'Response' => Message::toString($e->getResponse()),
                 'Response Code' => $e->getResponse()->getStatusCode()
                     . " (" . $e->getResponse()->getReasonPhrase() . ")",
                 'Request' => Message::toString($e->getRequest()),
-                'Linio Username' => $this->userName,
+                'Falabella Username' => $this->userName,
             ]);
         } catch (ErrorResponseException $e) {
             throw $this->exceptionFromErrorResponse($e);
@@ -164,7 +176,7 @@ class FalabellaSdk
             return $this->sdk->orders()->getMultipleOrderItems($orderIdList);
         } catch (RequestException $e) {
             throw new FetchException($e, [
-                'Called From' => 'Linio get Order Items',
+                'Called From' => 'Falabella get Order Items',
                 'Response' => Message::toString($e->getResponse()),
                 'Response Code' => $e->getResponse()->getStatusCode()
                     . " (" . $e->getResponse()->getReasonPhrase() . ")",
@@ -186,7 +198,7 @@ class FalabellaSdk
             return $this->sdk->globalProducts()->getProductsBySellerSku($skus);
         } catch (RequestException $e) {
             throw new FetchProductException($e, [
-                'Called From' => 'Linio get Products By Sku',
+                'Called From' => 'Falabella get Products By Sku',
                 'Response' => Message::toString($e->getResponse()),
                 'Response Code' => $e->getResponse()->getStatusCode()
                     . " (" . $e->getResponse()->getReasonPhrase() . ")",
@@ -237,7 +249,7 @@ class FalabellaSdk
         try {
             $this->logCall('getQc');
             $feed = $this->sdk->feeds()->getFeedStatusById($feedId);
-            $localFeed = FalabellaFeed::saveFromLinio($feed);
+            $localFeed = FalabellaFeed::saveFromSellerCenter($feed);
 
             return $localFeed;
         } catch (RequestException $e) {
@@ -255,7 +267,7 @@ class FalabellaSdk
 
     public function publishProducts(array $products): FalabellaFeed
     {
-        $linioProducts = new Products();
+        $globalProducts = new Products();
         foreach ($products as $product) {
             $primaryCategory = Category::fromId($product['PrimaryCategory']);
             $brand = Brand::fromName($product['Brand']);
@@ -275,14 +287,14 @@ class FalabellaSdk
 
             $businessUnits->add(
                 new BusinessUnit(
-                    'facl',
+                    $this->operatorCode,
                     $product['Price'],
                     $product['Quantity'],
                     ProductStatus::ACTIVE
                 )
             );
 
-            $linioProd = GlobalProduct::fromBasicData(
+            $globalProduct = GlobalProduct::fromBasicData(
                 $product['SellerSku'], // string
                 $product['Name'], // string
                 $product['Variation'], // string
@@ -296,16 +308,16 @@ class FalabellaSdk
                 $images, //Images will be ignored when creating, and used when updating
                 ProductStatus::ACTIVE
             );
-            $linioProd->setParentSku($product['ParentSku']);
-            $linioProducts->add($linioProd);
+            $globalProduct->setParentSku($product['ParentSku']);
+            $globalProducts->add($globalProduct);
         }
 
         try {
             $this->logCall('productCreate');
-            $feedResponse = $this->sdk->globalProducts()->productCreate($linioProducts);
+            $feedResponse = $this->sdk->globalProducts()->productCreate($globalProducts);
             $this->logCall('getFeedStatusById');
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
-            $localFeed = FalabellaFeed::saveFromLinio($feed);
+            $localFeed = FalabellaFeed::saveFromSellerCenter($feed);
 
             return $localFeed;
         } catch (RequestException $e) {
@@ -335,7 +347,7 @@ class FalabellaSdk
 
                 $businessUnits->add(
                     new BusinessUnit(
-                        'facl',
+                        $this->operatorCode,
                         $prodData['price'],
                         $prodData['stock'],
                         ProductStatus::ACTIVE,
@@ -357,7 +369,7 @@ class FalabellaSdk
             $feedResponse = $this->sdk->globalProducts()->productUpdate($products);
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
 
-            $localFeed = FalabellaFeed::saveFromLinio($feed);
+            $localFeed = FalabellaFeed::saveFromSellerCenter($feed);
         } catch (RequestException $e) {
             throw new FetchException($e, [
                 'Called From' => 'Update Product',
@@ -389,7 +401,7 @@ class FalabellaSdk
             $feedResponse = $this->sdk->globalProducts()->addImage($imgSend);
             $this->logCall('getFeedStatusById');
             $feed = $this->sdk->feeds()->getFeedStatusById($feedResponse->getRequestId());
-            $localFeed = FalabellaFeed::saveFromLinio($feed);
+            $localFeed = FalabellaFeed::saveFromSellerCenter($feed);
         } catch (RequestException $e) {
             throw new FetchException($e, [
                 'Called From' => 'Add Images',
@@ -412,7 +424,7 @@ class FalabellaSdk
             return;
         }
         Log::channel('plain')->debug(sprintf(
-            "[%s] | Linio Call: %s",
+            "[%s] | Falabella Call: %s",
             $this->userName,
             $method
         ));
@@ -443,21 +455,21 @@ class FalabellaSdk
             return $this->sdk->orders()->getOrder($orderId);
         } catch (RequestException $e) {
             throw new FetchException($e, [
-                'Called From' => 'Linio get Order',
+                'Called From' => 'Falabella get Order',
                 'Response' => Message::toString($e->getResponse()),
                 'Response Code' => $e->getResponse()->getStatusCode()
                     . " (" . $e->getResponse()->getReasonPhrase() . ")",
                 'Request' => Message::toString($e->getRequest()),
-                'Linio Username' => $this->userName,
+                'Falabella Username' => $this->userName,
             ]);
         } catch (ErrorResponseException $e) {
             throw new FetchException(
                 new Exception('Error response exception', $e->getCode()),
                 [
-                    'Called From' => 'Linio get Order',
+                    'Called From' => 'Falabella get Order',
                     'Type' => $e->getType(),
                     'Action' => $e->getAction(),
-                    'Linio Username' => $this->userName,
+                    'Falabella Username' => $this->userName,
                 ]
             );
         }

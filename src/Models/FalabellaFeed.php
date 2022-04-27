@@ -47,7 +47,7 @@ class FalabellaFeed extends Model
         return in_array($this->status, [self::STATUS_CANCELED, self::STATUS_FINISHED, self::STATUS_ERROR]);
     }
 
-    public static function saveFromLinio(Feed $feed): self
+    public static function saveFromSellerCenter(Feed $feed): self
     {
         $newFeed = self::where('feed_id', $feed->getId())->firstOrNew();
         $newFeed->feed_id = $feed->getId();

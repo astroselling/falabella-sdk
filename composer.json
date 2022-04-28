@@ -22,7 +22,7 @@
         }
     },
     "require": {
-        "php": "^8.0",
+        "php": "^7.4||^8.0",
         "guzzlehttp/guzzle": "^7.4",
         "illuminate/contracts": "^8.0",
         "linio/seller-center-sdk": "dev-gsc-master-dev",

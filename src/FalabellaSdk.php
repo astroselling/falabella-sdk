@@ -297,13 +297,13 @@ class FalabellaSdk
             $globalProduct = GlobalProduct::fromBasicData(
                 $product['SellerSku'], // string
                 $product['Name'], // string
-                $product['Variation'], // string
+                $product['Variation'] ?? null, // string
                 $primaryCategory, // Category
                 $product['Description'], // string
                 $brand, // Brand
                 $businessUnits,
                 $product['ProductId'], // string
-                $product['TaxClass'], // nulo|string
+                $product['TaxClass'] ?? null, // nulo|string
                 $productData, // ProductData
                 $images, //Images will be ignored when creating, and used when updating
                 ProductStatus::ACTIVE

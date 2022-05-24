@@ -285,7 +285,7 @@ class FalabellaSdk
 
             $attributes = array_filter(
                 $product,
-                fn ($a) => !in_array(
+                fn ($a) => ! in_array(
                     $a,
                     [
                         'PrimaryCategory',
@@ -343,19 +343,19 @@ class FalabellaSdk
             if (isset($product['Color'])) {
                 $globalProduct->setColor($product['Color']);
             }
-            
+
             if (isset($product['ColorBasico'])) {
                 $globalProduct->setColorBasico($product['ColorBasico']);
             }
-            
+
             if (isset($product['Size'])) {
                 $globalProduct->setSize($product['Size']);
             }
-            
+
             if (isset($product['Talla'])) {
                 $globalProduct->setTalla($product['Talla']);
             }
-            
+
             $globalProduct->setParentSku($product['ParentSku']);
             $globalProducts->add($globalProduct);
         }

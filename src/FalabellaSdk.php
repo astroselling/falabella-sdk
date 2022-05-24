@@ -283,6 +283,37 @@ class FalabellaSdk
                 $productData->add('ShortDescription', $product['ShortDescription']);
             }
 
+            $attributes = array_filter(
+                $product,
+                fn ($a) => !in_array(
+                    $a,
+                    [
+                        'PrimaryCategory',
+                        'Brand',
+                        'ConditionType',
+                        'PackageHeight',
+                        'PackageWidth',
+                        'PackageLength',
+                        'PackageWeight',
+                        'ShortDescription',
+                        'Price',
+                        'Quantity',
+                        'SellerSku',
+                        'Name',
+                        'Variation',
+                        'Description',
+                        'ProductId',
+                        'TaxClass',
+                        'ParentSku',
+                    ]
+                ),
+                ARRAY_FILTER_USE_KEY
+            );
+
+            foreach ($attributes as $name => $value) {
+                $productData->add($name, $value);
+            }
+
             $businessUnits = new BusinessUnits();
 
             $businessUnits->add(
@@ -308,6 +339,23 @@ class FalabellaSdk
                 $images, //Images will be ignored when creating, and used when updating
                 ProductStatus::ACTIVE
             );
+
+            if (isset($product['Color'])) {
+                $globalProduct->setColor($product['Color']);
+            }
+            
+            if (isset($product['ColorBasico'])) {
+                $globalProduct->setColorBasico($product['ColorBasico']);
+            }
+            
+            if (isset($product['Size'])) {
+                $globalProduct->setSize($product['Size']);
+            }
+            
+            if (isset($product['Talla'])) {
+                $globalProduct->setTalla($product['Talla']);
+            }
+            
             $globalProduct->setParentSku($product['ParentSku']);
             $globalProducts->add($globalProduct);
         }

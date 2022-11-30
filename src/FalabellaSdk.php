@@ -40,12 +40,6 @@ class FalabellaSdk
 
     public function __construct(string $userName, string $apiKey, string $countryISO)
     {
-        $client = new Client();
-        $configuration = new Configuration($apiKey, $userName, $countryISO == 'TST' ? self::STAGING_URL : self::URL, '1.0');
-        $this->sdk = new SellerCenterSdk($configuration, $client);
-        $this->userName = $userName; // Used only for logging
-        $this->customLogCalls = config('falabellasdk.custom_log_calls');
-
         $this->operatorCode = [
             'ARG' => 'faar',
             'BRA' => 'fabr',
@@ -56,6 +50,22 @@ class FalabellaSdk
             'TST' => 'facl',
             'URY' => 'fauy',
         ][$countryISO];
+
+        $client = new Client();
+        $configuration = new Configuration(
+            $apiKey,
+            $userName,
+            $countryISO == 'TST' ? self::STAGING_URL : self::URL,
+            '1.0',
+            $userName,
+            'PHP',
+            (string) phpversion(),
+            'ASTROSELLING',
+            strtoupper(substr($this->operatorCode, -2))
+        );
+        $this->sdk = new SellerCenterSdk($configuration, $client);
+        $this->userName = $userName; // Used only for logging
+        $this->customLogCalls = config('falabellasdk.custom_log_calls');
     }
 
     private function exceptionFromErrorResponse(ErrorResponseException $e)

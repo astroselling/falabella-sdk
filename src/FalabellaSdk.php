@@ -25,6 +25,7 @@ use Linio\SellerCenter\Model\Product\Image;
 use Linio\SellerCenter\Model\Product\Images;
 use Linio\SellerCenter\Model\Product\ProductData;
 use Linio\SellerCenter\Model\Product\Products;
+use Linio\SellerCenter\Model\Seller\Seller;
 use Linio\SellerCenter\SellerCenterSdk;
 use Linio\SellerCenter\Service\ProductManager;
 use Linio\SellerCenter\Service\WebhookManager;
@@ -532,5 +533,10 @@ class FalabellaSdk
                 ]
             );
         }
+    }
+
+    public function getSeller(): Seller
+    {
+        return $this->sdk->globalSeller()->getSellerByUser();
     }
 }

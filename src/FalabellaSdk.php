@@ -38,7 +38,7 @@ class FalabellaSdk
     public const URL = 'https://sellercenter-api.falabella.com';
     public const STAGING_URL = 'https://sellercenter-api-staging.falabella.com';
 
-    public function __construct(string $userName, string $apiKey, string $countryISO)
+    public function __construct(string $userName, string $apiKey, string $countryISO, ?string $sellerId = null)
     {
         $this->operatorCode = [
             'ARG' => 'faar',
@@ -53,15 +53,16 @@ class FalabellaSdk
 
         $client = new Client();
         $configuration = new Configuration(
-            $apiKey,
-            $userName,
-            $countryISO == 'TST' ? self::STAGING_URL : self::URL,
-            '1.0',
-            $userName,
-            'PHP',
-            (string) phpversion(),
-            'ASTROSELLING',
-            strtoupper(substr($this->operatorCode, -2))
+            $apiKey, // key
+            $userName, // username
+            $countryISO == 'TST' ? self::STAGING_URL : self::URL, // endpoint
+            '1.0', // version
+            'SDK', // source
+            $sellerId, // sellerId
+            'PHP', // language
+            (string) phpversion(), // languageVersion
+            'ASTROSELLING', // integrator
+            strtoupper(substr($this->operatorCode, -2)) // country
         );
         $this->sdk = new SellerCenterSdk($configuration, $client);
         $this->userName = $userName; // Used only for logging

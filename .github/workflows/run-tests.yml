@@ -44,9 +44,8 @@ jobs:
         run: |
           composer require "laravel/framework:${{ matrix.laravel }}" "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update
           composer update --${{ matrix.stability }} --prefer-dist --no-interaction
-        with:
-          env:
-            COMPOSER_AUTH: ${{secrets.GITHUB_TOKEN}}
+        env:
+          COMPOSER_AUTH: ${{secrets.GITHUB_TOKEN}}
 
       - name: Execute tests
         run: vendor/bin/pest

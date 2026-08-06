@@ -10,5 +10,10 @@ parameters:
     tmpDir: build/phpstan
     checkOctaneCompatibility: true
     checkModelProperties: true
-    checkMissingIterableValueType: false
+    ignoreErrors:
+        # Larastan asume la estructura de una aplicacion: aca config/ es el
+        # config del propio paquete, donde llamar env() es lo idiomatico.
+        -
+            identifier: larastan.noEnvCallsOutsideOfConfig
+            path: config/*
 

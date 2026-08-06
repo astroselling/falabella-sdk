@@ -24,7 +24,7 @@
     "require": {
         "php": "^7.4||^8.0",
         "guzzlehttp/guzzle": "^7.4",
-        "illuminate/contracts": "^8.0|^9.0|^10.0|^11.0",
+        "illuminate/contracts": "^8.0|^9.0|^10.0|^11.0|^12.0|^13.0",
         "linio/seller-center-sdk": "dev-main",
         "spatie/laravel-package-tools": "^1.9.2"
     },

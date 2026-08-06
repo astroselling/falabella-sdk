@@ -84,7 +84,7 @@ class FalabellaSdk
         );
     }
 
-    public function getProducts(int $limit, int $offset, string $filter = null): array
+    public function getProducts(int $limit, int $offset, ?string $filter = null): array
     {
         if (! $filter) {
             $filter = ProductManager::DEFAULT_FILTER;

@@ -72,10 +72,21 @@ class FalabellaSdk
 
     private function exceptionFromErrorResponse(ErrorResponseException $e)
     {
+        // El mensaje de la excepción ES lo que persiste en failed_jobs/monitoring: antes decía
+        // siempre el literal "Error response exception" (y el contexto traía un 'Called From'
+        // hardcodeado de get Order Items para TODAS las acciones), dejando ~7k errores/semana
+        // indiagnosticables. Ahora el mensaje lleva la Action y la causa real que devuelve la API.
         return new FetchException(
-            new Exception('Error response exception', $e->getCode()),
+            new Exception(
+                sprintf(
+                    'Falabella API error response [%s]: %s',
+                    $e->getAction() ?: 'unknown-action',
+                    $e->getMessage() ?: 'no message'
+                ),
+                $e->getCode()
+            ),
             [
-                'Called From' => 'Falabella get Order Items',
+                'Called From' => 'Falabella API (' . ($e->getAction() ?: 'unknown-action') . ')',
                 'Type' => $e->getType(),
                 'Action' => $e->getAction(),
                 'Message' => $e->getMessage(),
